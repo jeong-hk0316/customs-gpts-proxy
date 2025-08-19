@@ -5,7 +5,6 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, openai-conversation-id, openai-ephemeral-user-id');
   
-  // OPTIONS 요청 처리
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -15,12 +14,11 @@ export default async function handler(req, res) {
     const baseUrl = 'https://apis.data.go.kr/1220000/nitemtrade/getNitemtradeList';
     const serviceKey = '3VkSJ0Q0/cRKftezt4f/L899ZRVB7IBNc/r8fSqbf5yBFrjXoZP19XZXfceKbp9zwffD4hO/BOyzHxBaiRynSg==';
     
-    // 클라이언트에서 받은 파라미터
     const { 
-      strtYymm,  // 조회시작년월
-      endYymm,   // 조회종료년월
-      hsSgn,     // HS코드
-      imexTp = '2'  // 수출입구분 (1:수출, 2:수입)
+      strtYymm,
+      endYymm,
+      hsSgn,
+      imexTp = '2'
     } = req.query;
     
     // 필수 파라미터 체크
@@ -31,7 +29,7 @@ export default async function handler(req, res) {
       });
     }
     
-    // API 호출 URL 구성
+    // URL 파라미터 구성 - XML로 받기
     const params = new URLSearchParams({
       serviceKey: serviceKey,
       strtYymm: strtYymm,
@@ -39,18 +37,40 @@ export default async function handler(req, res) {
       hsSgn: hsSgn,
       imexTp: imexTp,
       pageNo: '1',
-      numOfRows: '1000',  // 충분한 데이터 가져오기
-      type: 'json'
+      numOfRows: '1000'
+      // type 파라미터 제거 (기본값이 XML)
     });
     
     const apiUrl = `${baseUrl}?${params.toString()}`;
     
     // API 호출
     const response = await fetch(apiUrl);
-    const data = await response.json();
+    const xmlText = await response.text();
     
-    // 응답 반환
-    res.status(200).json(data);
+    // 간단한 XML 파싱
+    const items = [];
+    const itemMatches = xmlText.matchAll(/<item>(.*?)<\/item>/gs);
+    
+    for (const match of itemMatches) {
+      const itemXml = match[1];
+      const item = {
+        year: (itemXml.match(/<year>(.*?)<\/year>/) || [])[1],
+        hsSgn: (itemXml.match(/<hsSgn>(.*?)<\/hsSgn>/) || [])[1],
+        ctryCd: (itemXml.match(/<ctryCd>(.*?)<\/ctryCd>/) || [])[1],
+        ctryNm: (itemXml.match(/<ctryNm>(.*?)<\/ctryNm>/) || [])[1],
+        expDlr: (itemXml.match(/<expDlr>(.*?)<\/expDlr>/) || [])[1],
+        impDlr: (itemXml.match(/<impDlr>(.*?)<\/impDlr>/) || [])[1],
+        balDlr: (itemXml.match(/<balDlr>(.*?)<\/balDlr>/) || [])[1]
+      };
+      items.push(item);
+    }
+    
+    // JSON 형식으로 응답
+    res.status(200).json({
+      success: true,
+      data: items,
+      count: items.length
+    });
     
   } catch (error) {
     console.error('Error:', error);

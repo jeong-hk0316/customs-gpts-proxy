@@ -5,7 +5,6 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, openai-conversation-id, openai-ephemeral-user-id');
   
-  // OPTIONS 요청 처리
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -15,27 +14,45 @@ export default async function handler(req, res) {
     const baseUrl = 'https://apis.data.go.kr/1220000/retrieveTrifFxrtInfo/getRetrieveTrifFxrtInfo';
     const serviceKey = '3VkSJ0Q0/cRKftezt4f/L899ZRVB7IBNc/r8fSqbf5yBFrjXoZP19XZXfceKbp9zwffD4hO/BOyzHxBaiRynSg==';
     
-    // 클라이언트에서 받은 파라미터
     const { searchDate, imexTp = '2' } = req.query;
     
-    // API 호출 URL 구성
+    // URL 파라미터 구성 - XML로 받기
     const params = new URLSearchParams({
       serviceKey: serviceKey,
       searchDate: searchDate || new Date().toISOString().slice(0, 10).replace(/-/g, ''),
       imexTp: imexTp,
       pageNo: '1',
-      numOfRows: '100',
-      type: 'json'
+      numOfRows: '100'
+      // type 파라미터 제거 (기본값이 XML)
     });
     
     const apiUrl = `${baseUrl}?${params.toString()}`;
     
     // API 호출
     const response = await fetch(apiUrl);
-    const data = await response.json();
+    const xmlText = await response.text();
     
-    // 응답 반환
-    res.status(200).json(data);
+    // 간단한 XML 파싱 (환율 데이터 추출)
+    const items = [];
+    const itemMatches = xmlText.matchAll(/<item>(.*?)<\/item>/gs);
+    
+    for (const match of itemMatches) {
+      const itemXml = match[1];
+      const item = {
+        currCd: (itemXml.match(/<currCd>(.*?)<\/currCd>/) || [])[1],
+        currNm: (itemXml.match(/<currNm>(.*?)<\/currNm>/) || [])[1],
+        fxrt: (itemXml.match(/<fxrt>(.*?)<\/fxrt>/) || [])[1],
+        imexTp: (itemXml.match(/<imexTp>(.*?)<\/imexTp>/) || [])[1]
+      };
+      items.push(item);
+    }
+    
+    // JSON 형식으로 응답
+    res.status(200).json({
+      success: true,
+      data: items,
+      count: items.length
+    });
     
   } catch (error) {
     console.error('Error:', error);
