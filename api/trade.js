@@ -10,9 +10,10 @@ export default async function handler(req, res) {
   }
   
   try {
-    // 관세청 수출입실적 API
     const baseUrl = 'https://apis.data.go.kr/1220000/nitemtrade/getNitemtradeList';
-    const serviceKey = '3VkSJ0Q0/cRKftezt4f/L899ZRVB7IBNc/r8fSqbf5yBFrjXoZP19XZXfceKbp9zwffD4hO/BOyzHxBaiRynSg==';
+    
+    // Decoding 키 사용 (+ 주의!)
+    const serviceKey = '3VkSJ0Q0/cRKftezt4f/L899ZRVB7IBNc/r8fSqbf5yBFrjXoZP19XZXfceKbp9zwffD4hO+BOyzHxBaiRynSg==';
     
     const { 
       strtYymm,
@@ -29,25 +30,18 @@ export default async function handler(req, res) {
       });
     }
     
-    // URL 파라미터 구성 - XML로 받기
-    const params = new URLSearchParams({
-      serviceKey: serviceKey,
-      strtYymm: strtYymm,
-      endYymm: endYymm,
-      hsSgn: hsSgn,
-      imexTp: imexTp,
-      pageNo: '1',
-      numOfRows: '1000'
-      // type 파라미터 제거 (기본값이 XML)
-    });
+    // URL 구성 (서비스키 인코딩)
+    const apiUrl = `${baseUrl}?serviceKey=${encodeURIComponent(serviceKey)}&strtYymm=${strtYymm}&endYymm=${endYymm}&hsSgn=${hsSgn}&imexTp=${imexTp}&pageNo=1&numOfRows=1000`;
     
-    const apiUrl = `${baseUrl}?${params.toString()}`;
+    console.log('API Call:', apiUrl);
     
     // API 호출
     const response = await fetch(apiUrl);
     const xmlText = await response.text();
     
-    // 간단한 XML 파싱
+    console.log('Response:', xmlText.substring(0, 500));
+    
+    // XML 파싱
     const items = [];
     const itemMatches = xmlText.matchAll(/<item>(.*?)<\/item>/gs);
     
@@ -62,14 +56,17 @@ export default async function handler(req, res) {
         impDlr: (itemXml.match(/<impDlr>(.*?)<\/impDlr>/) || [])[1],
         balDlr: (itemXml.match(/<balDlr>(.*?)<\/balDlr>/) || [])[1]
       };
-      items.push(item);
+      
+      if (item.hsSgn) {
+        items.push(item);
+      }
     }
     
-    // JSON 형식으로 응답
     res.status(200).json({
-      success: true,
+      success: items.length > 0,
       data: items,
-      count: items.length
+      count: items.length,
+      message: items.length === 0 ? '해당 조건에 데이터가 없습니다.' : null
     });
     
   } catch (error) {
