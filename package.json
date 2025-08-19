@@ -1,0 +1,13 @@
+{
+  "name": "customs-api-proxy",
+  "version": "1.0.0",
+  "description": "관세청 API 프록시 서버",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {},
+  "engines": {
+    "node": ">=18.x"
+  }
+}
