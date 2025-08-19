@@ -1,4 +1,4 @@
-// api/trade.js
+// api/trade.js (국가별 실적 버전)
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -9,12 +9,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    const baseUrl = 'https://apis.data.go.kr/1220000/nitemtrade/getNitemtradeList';
-
-    // 관세청 수출입실적 API 인증키 (인코딩된 형태 그대로 사용해도 OK)
+    const baseUrl = 'https://apis.data.go.kr/1220000/itemCountryTrade/getItemCountryTrade';
     const apiKey = '3VkSJ0Q0%2FcRKftezt4f%2FL899ZRVB7IBNc%2Fr8fSqbf5yBFrjXoZP19XZXfceKbp9zwffD4hO%2BBOyzHxBaiRynSg%3D%3D';
 
-    const { strtYymm, endYymm, hsSgn, imexTp = '2' } = req.query;
+    const { strtYymm, endYymm, hsSgn, imexTp = '2', cntyCd = '' } = req.query;
 
     if (!strtYymm || !endYymm || !hsSgn) {
       return res.status(400).json({
@@ -24,11 +22,12 @@ export default async function handler(req, res) {
     }
 
     const params = new URLSearchParams({
-      serviceKey: apiKey,   // ✅ 반드시 소문자 serviceKey
-      strtYymm,             // 시작연월 (YYYYMM)
-      endYymm,              // 종료연월 (YYYYMM)
-      hsSgn,                // HS 코드
-      imexTp,               // 1=수출, 2=수입
+      serviceKey: apiKey,
+      strtYymm,
+      endYymm,
+      hsSgn,
+      imexTp,
+      cntyCd,           // 비워두면 전체 국가
       pageNo: '1',
       numOfRows: '1000',
       type: 'json'
@@ -50,7 +49,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       success: false,
       error: error.message,
-      message: "품목별 수출입실적 API 호출 중 오류 발생"
+      message: "품목별·국가별 수출입실적 API 호출 중 오류 발생"
     });
   }
 }
