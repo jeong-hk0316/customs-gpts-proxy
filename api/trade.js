@@ -1,4 +1,4 @@
-// api/trade.js (국가별 실적 버전)
+// api/trade.js (국가별 품목별 실적)
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -22,12 +22,12 @@ export default async function handler(req, res) {
     }
 
     const params = new URLSearchParams({
-      serviceKey: apiKey,
+      serviceKey: apiKey,   // ✅ 소문자
       strtYymm,
       endYymm,
       hsSgn,
       imexTp,
-      cntyCd,           // 비워두면 전체 국가
+      cntyCd,               // 국가코드 (비우면 전체 국가)
       pageNo: '1',
       numOfRows: '1000',
       type: 'json'
